@@ -1,7 +1,7 @@
 import { PCCConvenienceFunctions } from "@pantheon-systems/pcc-react-sdk";
 import type { Article, ArticleWithoutContent } from "@pantheon-systems/pcc-react-sdk";
-import { getArticleURLFromSite } from "@pantheon-systems/pcc-react-sdk/server";
 import Link from "next/link";
+import { useState, useEffect } from "react";
 
 // Interface to match the structure defined in smart component map
 interface DocumentIdItem {
@@ -9,55 +9,109 @@ interface DocumentIdItem {
 }
 
 interface Props {
-  documentIds: DocumentIdItem[];
+  documentIds: DocumentIdItem[] | DocumentIdItem | Record<string, DocumentIdItem | string> | string[] | string;
 }
 
-const TileNavigation = async ({ documentIds }: Props) => {
-  // Extract document IDs from the object structure
-  const docIds = documentIds?.map(doc => doc.item) || [];
-  
-  // Validate documentIds (min 2, max 5)
-  const validDocIds = docIds.slice(0, 5);
-  if (validDocIds.length < 2) {
-    return (
-      <div className="text-red-600">
-        Error: TileNavigation requires at least 2 document IDs
-      </div>
-    );
+const TileNavigation = ({ documentIds }: Props) => {
+  const [articles, setArticles] = useState<ArticleWithoutContent[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchArticles = async () => {
+      try {
+        console.log("Client component - documentIds:", documentIds);
+        
+        // Safely extract document IDs, handling different possible formats
+        let docIds: string[] = [];
+        
+        if (Array.isArray(documentIds)) {
+          // If documentIds is already an array
+          docIds = documentIds.map(doc => {
+            if (typeof doc === 'string') return doc;
+            if (doc && typeof doc === 'object' && 'item' in doc) return String(doc.item);
+            return '';
+          }).filter(Boolean);
+        } else if (documentIds && typeof documentIds === 'object') {
+          // If documentIds is an object (but not array)
+          if ('item' in documentIds) {
+            // If it's a single item object
+            docIds = [String(documentIds.item)];
+          } else {
+            // Try to convert object to array if possible
+            try {
+              const values = Object.values(documentIds);
+              docIds = values.map(val => {
+                if (typeof val === 'string') return val;
+                if (val && typeof val === 'object' && 'item' in val) return String(val.item);
+                return '';
+              }).filter(Boolean);
+            } catch (e) {
+              console.error("Error parsing documentIds:", e);
+            }
+          }
+        } else if (typeof documentIds === 'string') {
+          // If it's a single string
+          docIds = [documentIds];
+        }
+        
+        console.log("Client component - Processed docIds:", docIds);
+        
+        // Validate documentIds (min 2, max 5)
+        const validDocIds = docIds.slice(0, 5);
+        if (validDocIds.length < 1) {
+          setError("Error: TileNavigation requires at least 1 document ID");
+          setIsLoading(false);
+          return;
+        }
+
+        // Fetch articles using Document IDs in parallel
+        const articlePromises = validDocIds.map(async (docId) => {
+          try {
+            console.log("Client component - fetching article with ID:", docId);
+            return await PCCConvenienceFunctions.getArticleBySlugOrId(docId);
+          } catch (error) {
+            console.error(`Client component - Error fetching article with ID ${docId}:`, error);
+            return null;
+          }
+        });
+
+        const fetchedArticles = await Promise.all(articlePromises);
+
+        // Filter out any null articles (failed fetches)
+        const validArticles = fetchedArticles.filter(Boolean) as ArticleWithoutContent[];
+        console.log("Client component - fetched articles count:", validArticles.length);
+
+        if (!validArticles || validArticles.length === 0) {
+          setError("No articles found for the provided document IDs.");
+        } else {
+          setArticles(validArticles);
+        }
+      } catch (err) {
+        console.error("Client component - Error fetching articles:", err);
+        setError("Error loading articles.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchArticles();
+  }, [documentIds]);
+
+  if (isLoading) {
+    return <div className="p-4">Loading articles...</div>;
   }
 
-  // Fetch articles using Document IDs in parallel
-  const articles = await Promise.all(validDocIds.map(async (docId) => {
-    try {
-      return await PCCConvenienceFunctions.getArticleBySlugOrId(docId);
-    } catch (error) {
-      console.error(`Error fetching article with ID ${docId}:`, error);
-      return null;
-    }
-  }));
-
-  // Filter out any null articles (failed fetches)
-  const validArticles = articles.filter(Boolean);
-
-  if (!validArticles || validArticles.length === 0) {
-    return <div className="p-4">No articles found for the provided document IDs.</div>;
-  }
-
-  // Get the site for URL generation
-  let site;
-  try {
-    site = await PCCConvenienceFunctions.getSite();
-  } catch (error) {
-    console.error("Error fetching site:", error);
-    return <div className="p-4 text-red-600">Error loading site information.</div>;
+  if (error) {
+    return <div className="p-4 text-red-600">{error}</div>;
   }
 
   return (
     <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
-      {validArticles.map((article: Article | null) => (
+      {articles.map((article) => (
         <NavigationTile 
-          key={article?.id} 
-          article={article as ArticleWithoutContent}
+          key={article.id} 
+          article={article}
         />
       ))}
     </div>
@@ -70,7 +124,7 @@ interface NavigationTileProps {
 
 function NavigationTile({ article }: NavigationTileProps) {
   // Use the article slug to construct a simple URL
-  const targetHref = `/articles/${article.slug}`;
+  const targetHref = `/articles/${article.slug ? article.slug : article.id}`;
   const imageSrc = (article.metadata?.["image"] as string) || null;
 
   return (
