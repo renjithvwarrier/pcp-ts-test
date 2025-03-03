@@ -192,26 +192,18 @@ const TileNavigation = ({ documentIds }: Props) => {
     );
   }
 
-  // Add copies of the first article to the end of the array if needed
-  const extendedData = [
-    ...data?.data,
-    ...data?.data,
-    // ...data?.data,
-    // ...data?.data,
-  ];
-
   // If there's only one article, make it take up the full width with horizontal layout
-  if (extendedData?.length === 1) {
+  if (data?.data?.length === 1) {
     return (
       <div className="w-full">
-        <NavigationTile article={extendedData[0]} isWide={true} />
+        <NavigationTile article={data?.data[0]} isWide={true} />
       </div>
     );
   }
 
   return (
     <div className="grid w-full grid-cols-1 gap-8 md:grid-cols-2">
-      {extendedData?.map((article: ArticleTileData) => (
+      {data?.data?.map((article: ArticleTileData) => (
         <div key={article.id}>
           <NavigationTile article={article} isWide={false} />
         </div>

@@ -88,15 +88,16 @@ export const serverSmartComponentMap = {
       documentIds: {
         displayName: "Document IDs",
         required: true,
-        type: "object",
-        multiple: true,
-        fields: {
-          item: {
-            type: "string",
-            displayName: "Document ID",
-            required: true,
-          },
-        },
+        type: "string",
+        // type: "object",
+        // multiple: true,
+        // fields: {
+        //   item: {
+        //     type: "string",
+        //     displayName: "Document ID",
+        //     required: true,
+        //   },
+        // },
       },
     },
   },
