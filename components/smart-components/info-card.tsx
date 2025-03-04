@@ -5,9 +5,13 @@ interface Props {
   body: string;
   icon?: string;
   theme?: "primary" | "secondary" | "info" | "warning";
+  test?: {
+    key1: string;
+    key2: string;
+  }[];
 }
 
-const InfoCard = ({ title, body, icon = "info", theme = "primary" }: Props) => {
+const InfoCard = ({ title, body, icon = "info", theme = "primary", test }: Props) => {
   // Map theme names to tailwind classes
   const themeClasses = {
     primary: "bg-blue-50 border-blue-200 text-blue-800",

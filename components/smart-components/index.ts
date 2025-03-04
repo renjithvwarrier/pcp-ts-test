@@ -79,6 +79,24 @@ export const serverSmartComponentMap = {
         options: ["primary", "secondary", "info", "warning"],
         defaultValue: "primary",
       },
+      test: {
+        displayName: "Test",
+        required: false,
+        type: "object",
+        multiple: true,
+        fields: {
+          key1: {
+            displayName: "Key 1",
+            required: true,
+            type: "string",
+          },
+          key2: {
+            displayName: "Key 2",
+            required: true,
+            type: "string",
+          },
+        },
+      },
     },
   },
   TILE_NAVIGATION: {
